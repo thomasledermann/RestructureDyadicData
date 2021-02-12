@@ -1,0 +1,88 @@
+#######################################################
+#####      Date created    July 19, 2011          #####
+#####      Date modified   March 5, 2014          #####
+#######################################################
+
+
+####    F R O M    I N D I V I D U A L    O R G A N I Z E D    D A T A
+####    T O    P A I R W I S E    O R G A N I Z E D    D A T A
+
+## This function identifies between-dyads variables and places them between the group
+## (distinguishing) variable and the mixed variables.
+## The group variable can be either numeric or string. The pairwise data are sorted by
+## the dyad identification variable (dyad ID) and the group variable. 
+
+## Arguments
+# idat = individual structured data set
+# did = name of the dyad identification variable 
+# groupvar = name of the group variable
+# suffix = logical. If true actor and partner information is added as a suffix. Default is TRUE
+# nameA = optional. name added to the variables' name for actors. Default is "A".
+# nameP = name added to the variables' name for partners. Default is "P".
+# vsep = separation between the variable name and the actor and partner information. Default is "_".
+
+ind2pair <- function(idat, did, groupvar, suffix = TRUE, nameA = "A", nameP = "P", vsep = "_") {
+	sorteddat <- sorteddatA <- sorteddatP <- NULL; datpair <- datpairA <- datpairP <- NULL; datp <- NULL; pdid <- NULL; pgrv <- NULL; bvarvec <- NULL
+	nd <- nrow(idat)/2                               # number of dyads
+	pdid <- which(names(idat) == did)                # position of the dyad ID
+	pgrv <- which(names(idat) == groupvar)           # position of the group variable
+	
+	sorteddat <- sorteddatP <- idat[order(idat[did],idat[groupvar]),]
+
+	datpair <- datpairA <- as.data.frame(subset(sorteddat, select = -c(pdid,pgrv)), row.names = 1:(2*nd))
+
+	# data P    
+	sorteddatP$grouprev <- rep(2:1, nd)
+	sorteddatP <- sorteddatP[order(sorteddatP[did],sorteddatP$grouprev),]
+	datpairP <- as.data.frame(subset(sorteddatP, select = -c(pdid,pgrv,grouprev)), row.names = 1:(2*nd))
+
+	if (identical(datpairA,datpairP)){
+		datp <- idat
+	} else {
+		nvar <- ncol(datpair)
+		for (i in 1:nvar) {
+			if (identical(datpairA[i],datpairP[i])) bvarvec <- c(bvarvec,i)
+		}
+		if (!is.null(bvarvec)) {
+			datpairA <- subset(datpairA, select = -c(bvarvec))
+			datpairP <- subset(datpairP, select = -c(bvarvec))
+		}
+
+		if (suffix) {
+			names(datpairA) <- paste(names(datpairA), nameA, sep=vsep)
+			names(datpairP) <- paste(names(datpairP), nameP, sep=vsep)
+		} else {
+			names(datpairA) <- paste(nameA, sep=vsep, names(datpairA))
+			names(datpairP) <- paste(nameP, sep=vsep, names(datpairP))
+		}
+		datp <- cbind(subset(sorteddat, select = c(pdid,pgrv)), subset(datpair, select = bvarvec),datpairA,datpairP)
+	}
+	return(datp)
+}
+
+
+# Restructure example data set
+pdatSuff <- ind2pair(idat,"dID","Gender", nameA = "A", nameP = "P")
+pdatSuff
+idat
+
+pdatPref <- ind2pair(idat,"dID","Gender", nameA = "A", nameP = "P", suffix = FALSE)
+pdatPref
+
+pdatSuff2 <- ind2pair(idat2,"dID","Gender", nameA = "A", nameP = "P")
+pdatSuff2
+idat2
+
+pdatPref2 <- ind2pair(idat2,"dID","Gender", nameA = "A", nameP = "P", suffix = FALSE)
+pdatPref2
+
+pdat <- ind2pair(idatm,"dID","Gender", nameA = "Act", nameP = "Par")
+pdat
+idatm
+
+pdat2 <- ind2pair(idatm2,"dID","G01", nameA = "Act", nameP = "Par")
+pdat2
+
+pdata <- ind2pair(idatb,"dID","G01", nameA = "A", nameP = "P", suffix = FALSE)
+pdata
+idatb

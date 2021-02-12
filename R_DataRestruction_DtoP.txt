@@ -1,0 +1,555 @@
+#######################################################
+#####      Date created    July 19, 2011          #####
+#####      Date modified   July 25, 2014          #####
+#######################################################
+
+####    F R O M    D Y A D     O R G A N I Z E D    D A T A
+####    T O    P A I R W I S E    O R G A N I Z E D    D A T A
+
+## This function creates a pairwise structured dataset.
+## It creates a group variable using the information in the dyadic data set.
+## If the group variable is string a numeric group variable is added to the data set.
+## Between-dyad variables contain the same information for both members in the pairwise dataset.
+## The dyad identification variable is added as first variable followed by the group variable.
+## The order of the data is kept.
+
+## Arguments
+# dDat = dyad structured dataset.
+# nameA = name of member A in the variable names.
+# nameB = name of member B in the variable names.
+# id = name of the dyad identification variable (dyad ID). If there is no dyad id, one will be created. Default is "" 
+# dSep = separator between the variables' name and the names of the members. Default is "".
+# suffix = logic. If true names of the members are suffix. Default is TRUE.
+# nameAct = suffix or prefix for the actor variables. Default is "A".
+# namePar = suffix or prefix for the partner variables. Default is "P".
+# distV = name of the distinguishing variable. Default is "distVar".
+# APSep = seperator between the steem of the variable names and the suffix or prefix, respectively. Default is "_".
+
+dyad2pair <- function(dDat,nameA,nameB,id = "",dSep = "",suffix = TRUE,nameAct = "A",namePar = "P",distV = "distVar",APSep = "_") {
+	datNoId <- NULL; datNoId0 <- NULL; datPair <- NULL; datPairAP <- NULL; datPairPA <- NULL; datpairw <- NULL
+	doubleTLast <- NULL; doubleTFirst <- NULL; nPvar <- NULL; PairT <- NULL; PairN <- NULL; BetwN <- NULL; datBetw <- NULL
+	pairvar <- NULL
+	AddID <- FALSE
+	nd <- nrow(dDat)						# number of dyads
+	if(id == ""){
+		dDat$id <- 1:nd
+		AddID <- TRUE
+		datNoId <- dDat[names(dDat) != "id"]
+	} else {
+		datNoId <- dDat[names(dDat) != id]
+	}
+	datNoId0 <- datNoId
+	nvar <- ncol(datNoId)					# number of variables
+	if(suffix) {
+		nameAn <- paste(dSep,nameA,sep="")
+		nameBn <- paste(dSep,nameB,sep="")
+	} else {
+		nameAn <- paste(nameA,dSep,sep="")
+		nameBn <- paste(nameB,dSep,sep="")
+	}
+	nlA <- nchar(nameAn); nlB <- nchar(nameBn)	# length of class name
+	if(nlA >= nlB){
+		namelong <- nameAn
+		nameshort <- nameBn
+		nameAlong <- TRUE
+		nlengthlong1 <- nlA
+		nlengthshort1 <- nlB
+	}
+	if(nlA < nlB){
+		namelong <- nameBn
+		nameshort <- nameAn
+		nameAlong <- FALSE
+		nlengthlong1 <- nlB
+		nlengthshort1 <- nlA
+	}
+
+	if(suffix){					#### suffix	
+		for (i in 1:nvar) {		## separate paired variables and between variables
+			classnamei <- substr(names(datNoId[i]), nchar(names(datNoId[i])) - nlengthlong1 + 1, nchar(names(datNoId[i])))
+			if(classnamei == namelong){
+				varnamei <- substr(names(datNoId[i]), 1, nchar(names(datNoId[i])) - nlengthlong1)		# variable name
+				names(datNoId)[i] <- paste(varnamei)
+			} else {
+				classnamei <- substr(names(datNoId[i]), nchar(names(datNoId[i])) - nlengthshort1 + 1, nchar(names(datNoId[i])))
+				if(classnamei == nameshort){
+					varnamei <- substr(names(datNoId[i]), 1, nchar(names(datNoId[i])) - nlengthshort1)	# variable name
+					names(datNoId)[i] <- paste(varnamei)
+				}
+			}
+		}
+		doubleTLast <- duplicated(names(datNoId), fromLast = TRUE)	# True for all that appear the second time from the last
+		doubleTFirst <- duplicated(names(datNoId))			# True for all that appear the second time from the first
+		PairT <- doubleTLast | doubleTFirst 
+		PairN <- which(PairT)
+		BetwN <- which(!PairT)
+		datPair <- datNoId0[PairN]						# data with only paired variables
+		datBetw <- datNoId0[BetwN]						# data with only between variables
+		datPairAP <- datPairPA <- datPair
+
+		whichDouble <- which(doubleTFirst)
+		varDouble <- datNoId[doubleTFirst]
+		varDouble2 <- duplicated(names(varDouble))
+		if(!all(!varDouble2)) stop("The name of one or more between-dyads variable is identical with the name of one or more mixed variable\n")
+
+		if(all(!PairT)) {								# if there are no pairwise variables
+			datpairw$groupv <- c(rep(nameA,nd), rep(nameB,nd))
+		} else {	
+			classname1 <- substr(names(datPair[1]), nchar(names(datPair[1])) - nlengthlong1 + 1, nchar(names(datPair[1])))
+			if(classname1 == namelong & nameAlong){
+				name1 <- nameAn
+				name10 <- nameA
+				name2 <- nameBn
+				name20 <- nameB
+			} else {
+				if(classname1 == namelong & !nameAlong){
+					name1 <- nameBn
+					name10 <- nameB
+					name2 <- nameAn
+					name20 <- nameA
+				} else {
+					classname1 <- substr(names(datPair[1]), nchar(names(datPair[1])) - nlengthshort1 + 1, nchar(names(datPair[1])))
+					if(classname1 == nameshort & !nameAlong){
+						name1 <- nameAn
+						name10 <- nameA
+						name2 <- nameBn
+						name20 <- nameB
+					} else {
+						if(classname1 == nameshort & nameAlong){
+							name1 <- nameBn
+							name10 <- nameB
+							name2 <- nameAn
+							name20 <- nameA
+						} else {
+							stop("The name of one or more between-dyads variable is identical with the name of one or more mixed variable\n")
+						}
+					}
+				}
+			}
+
+			nl1 <- nchar(name1)
+			nl2 <- nchar(name2)
+			if(nl1 >= nl2) {
+				nlengthlong2 <- nl1
+				nlengthshort2 <- nl2
+			} else {
+				nlengthlong2 <- nl2
+				nlengthshort2 <- nl1
+			} 
+			nPvar <- ncol(datPair)				# number of paired variables
+			for (i in 1:nPvar) {
+				classnamei <- substr(names(datPair[i]), nchar(names(datPair[i])) - nlengthlong2 + 1, nchar(names(datPair[i])))
+				if(classnamei == name1){
+					varnamei <- substr(names(datPair[i]), 1, nchar(names(datPair[i])) - nlengthlong2)			# Pvariable name
+					names(datPairAP)[i] <- paste(varnamei, nameAct, sep=APSep)
+					names(datPairPA)[i] <- paste(varnamei, namePar, sep=APSep)
+					pairvar <- c(pairvar, varnamei)
+				} else {
+					if(classnamei == name2){
+						varnamei <- substr(names(datPair[i]), 1, nchar(names(datPair[i])) - nlengthlong2)		# Pvariable name
+						names(datPairAP)[i] <- paste(varnamei, namePar, sep=APSep)
+						names(datPairPA)[i] <- paste(varnamei, nameAct, sep=APSep)
+					} else {
+						classnamei <- substr(names(datPair[i]), nchar(names(datPair[i])) - nlengthshort2 + 1, nchar(names(datPair[i])))
+						if(classnamei == name1){
+							varnamei <- substr(names(datPair[i]), 1, nchar(names(datPair[i])) - nlengthshort2)	# Pvariable name
+							names(datPairAP)[i] <- paste(varnamei, nameAct, sep=APSep)
+							names(datPairPA)[i] <- paste(varnamei, namePar, sep=APSep)
+							pairvar <- c(pairvar, varnamei)
+						} else {
+							if(classnamei == name2){
+								varnamei <- substr(names(datPair[i]), 1, nchar(names(datPair[i])) - nlengthshort2) # Pvariable name
+								names(datPairAP)[i] <- paste(varnamei, namePar, sep=APSep)
+								names(datPairPA)[i] <- paste(varnamei, nameAct, sep=APSep)
+							} else {
+								stop("The name of one or more between-dyads variable is identical with the name of one or more mixed variable\n")
+							}
+						}
+					}
+				}
+			}
+			datpairw <- rbind(datPairAP, datPairPA)
+			datpairw$groupv <- c(rep(name10,nd), rep(name20,nd))
+		}
+	}
+
+	if(!suffix){				#### prefix
+		for (i in 1:nvar) {
+			classnamei <- substr(names(datNoId[i]), 1, nlengthlong1)
+			if(classnamei == namelong){
+				varnamei <- substr(names(datNoId[i]), nlengthlong1 + 1, nchar(names(datNoId[i])))		# variable name
+				names(datNoId)[i] <- paste(varnamei)
+			} else {
+				classnamei <- substr(names(datNoId[i]), 1, nlengthshort1)
+				if(classnamei == nameshort){
+					varnamei <- substr(names(datNoId[i]), nlengthshort1 + 1, nchar(names(datNoId[i])))	# variable name
+					names(datNoId)[i] <- paste(varnamei)
+				}
+			}
+		}
+
+		doubleTLast <- duplicated(names(datNoId), fromLast = TRUE)	# True for all that appear the second time from the last
+		doubleTFirst <- duplicated(names(datNoId))			# True for all that appear the second time from the first
+		PairT <- doubleTLast | doubleTFirst 
+		PairN <- which(PairT)
+		BetwN <- which(!PairT)
+		datPair <- datNoId0[PairN]						# data with only paired variables
+		datBetw <- datNoId0[BetwN]						# data with only between variables
+		datPairAP <- datPairPA <- datPair
+
+		whichDouble <- which(doubleTFirst)
+		varDouble <- datNoId[doubleTFirst]
+		varDouble2 <- duplicated(names(varDouble))
+		if(!all(!varDouble2)) stop("The name of one or more between-dyads variable is identical with the name of one or more mixed variable\n")
+
+		if(all(!PairT)) {								# if there are no pairwise variables
+			datpairw$groupv <- c(rep(nameA,nd), rep(nameB,nd))
+		} else {	
+			classname1 <- substr(names(datPair[1]), 1, nlengthlong1)
+			if(classname1 == namelong & nameAlong){
+				name1 <- nameAn
+				name10 <- nameA
+				name2 <- nameBn
+				name20 <- nameB
+			} else {
+				if(classname1 == namelong & !nameAlong){
+					name1 <- nameBn
+					name10 <- nameB
+					name2 <- nameAn
+					name20 <- nameA
+				} else {
+					classname1 <- substr(names(datPair[1]), 1, nlengthshort1)
+					if(classname1 == nameshort & !nameAlong){
+						name1 <- nameAn
+						name10 <- nameA
+						name2 <- nameBn
+						name20 <- nameB
+					} else {
+						if(classname1 == nameshort & nameAlong){
+							name1 <- nameBn
+							name10 <- nameB
+							name2 <- nameAn
+							name20 <- nameA
+						} else {
+							stop("The name of one or more between-dyads variable is identical with the name of one or more mixed variable\n")
+						}
+					}
+				}
+			}
+
+			nl1 <- nchar(name1)
+			nl2 <- nchar(name2)
+			if(nl1 >= nl2) {
+				nlengthlong2 <- nl1
+				nlengthshort2 <- nl2
+			} else {
+				nlengthlong2 <- nl2
+				nlengthshort2 <- nl1
+			} 
+
+			nPvar <- ncol(datPair)					# number of paired variables
+			for (i in 1:nPvar) {
+				classnamei <- substr(names(datPair[i]), 1, nlengthlong2)
+				if(classnamei == name1){
+					varnamei <- substr(names(datPair[i]), nlengthlong2 + 1, nchar(names(datPair[i])))			# Pvariable name
+					names(datPairAP)[i] <- paste(varnamei, nameAct, sep=APSep)
+					names(datPairPA)[i] <- paste(varnamei, namePar, sep=APSep)
+					pairvar <- c(pairvar, varnamei)
+				} else {
+					if(classnamei == name2){
+						varnamei <- substr(names(datPair[i]), nlengthlong2 + 1, nchar(names(datPair[i])))			# Pvariable name
+						names(datPairAP)[i] <- paste(varnamei, namePar, sep=APSep)
+						names(datPairPA)[i] <- paste(varnamei, nameAct, sep=APSep)
+					} else {
+						classnamei <- substr(names(datPair[i]), 1, nlengthshort2)
+						if(classnamei == name1){
+							varnamei <- substr(names(datPair[i]), nlengthshort2 + 1, nchar(names(datPair[i])))		# Pvariable name
+							names(datPairAP)[i] <- paste(varnamei, nameAct, sep=APSep)
+							names(datPairPA)[i] <- paste(varnamei, namePar, sep=APSep)
+							pairvar <- c(pairvar, varnamei)
+						} else {
+							if(classnamei == name2){
+								varnamei <- substr(names(datPair[i]), nlengthshort2 + 1, nchar(names(datPair[i])))	# Pvariable name
+								names(datPairAP)[i] <- paste(varnamei, namePar, sep=APSep)
+								names(datPairPA)[i] <- paste(varnamei, nameAct, sep=APSep)
+							} else {
+								stop("The name of one or more between-dyads variable is identical with the name of one or more mixed variable\n")
+							}
+						}
+					}
+				}
+			}
+			datpairw <- rbind(datPairAP, datPairPA)
+			datpairw$groupv <- c(rep(name10,nd), rep(name20,nd))
+		}
+	}
+
+	isNumeric <- suppressWarnings(!is.na(as.numeric(nameA)) & !is.na(as.numeric(nameB)))
+	if(isNumeric){
+		datpairw$groupv <- as.numeric(datpairw$groupv)
+		if(all(!PairT)) {
+			datpairw <- cbind(datpairw, rbind(datBetw,datBetw))
+		} else {
+			nvar2 <- ncol(datpairw)
+			datpairw <- cbind(datpairw[,nvar2], rbind(datBetw,datBetw), datpairw[,1:(nvar2-1)])			# merge between and pairs of Pvariables
+		}
+	} else {
+		datpairw$groupvN <- c(rep(-1,nd), rep(1,nd))
+		if(all(!PairT)) {										# if there are no pairwise variables
+			datpairw <- cbind(datpairw, rbind(datBetw,datBetw))
+		} else {
+			nvar2 <- ncol(datpairw)
+			if(all(PairT)) {											# if all variables pairwise
+				datpairw <- cbind(datpairw[,(nvar2-1):nvar2], datpairw[,1:(nvar2-2)])	# merge between and pairs of Pvariabless
+			} else {
+				datpairw <- cbind(datpairw[,(nvar2-1):nvar2], rbind(datBetw,datBetw), datpairw[,1:(nvar2-2)])	# merge between and pairs of Pvariabless
+			}
+		}
+		names(datpairw)[2] <- paste(distV,"num",sep = "_")		# name the Pvariable numeric group
+	}
+	names(datpairw)[1] <- distV							# rename the group Pvariable
+	if(AddID) {										# rename the id
+		datpairw <- cbind(dDat[,"id"], datpairw)		# add id
+		names(datpairw)[1] <- paste("Dyad_ID")
+	} else {
+		datpairw <- cbind(dDat[,id], datpairw)		# add id
+		names(datpairw)[1] <- id
+	}
+	return(datpairw)
+}
+
+dat00 <- dyad2pair(ddat00,"H","W","Dyad_ID",dSep="_",suffix=TRUE, distV = "Gender") # OK
+dat00
+ddat00
+
+dat0 <- dyad2pair(ddat0,"female","male","dID",distV="Gender",suffix=TRUE) # OK
+dat0
+ddat0
+
+dat1 <- dyad2pair(ddat1,"female","male","dID",distV="Gender",suffix=TRUE) # OK
+dat1
+ddat1
+
+dat1 <- dyad2pair(ddat1,"male","female","dID",distV="Gender",suffix=TRUE) # OK
+dat1
+ddat1
+
+dat1 <- dyad2pair(ddat1,"male","female",distV="Gender",suffix=TRUE) # OK
+dat1
+ddat1
+
+dat <- dyad2pair(ddat,"0","1",suffix=TRUE) # OK
+dat
+ddat
+
+dat2 <- dyad2pair(ddat2,"female","male","dID",distV="Gender",suffix=TRUE) # OK
+dat2
+ddat2
+
+dat3 <- dyad2pair(ddat3,"m","f","dID",distV="Gender")  # OK
+dat3
+ddat3
+
+dat3 <- dyad2pair(ddat3,"f","m","dID",distV="Gender")  # OK
+dat3
+ddat3
+
+dat4 <- dyad2pair(ddat4,".f",".m","dID",distV="Gender")  # OK
+dat4
+ddat4
+
+dat4 <- dyad2pair(ddat4,"f","m","dID",distV="Gender")  # OK
+dat4
+ddat4
+
+dat4 <- dyad2pair(ddat4,"m","f","dID",dSep=".",distV="Gender")  # OK
+dat4
+ddat4
+
+# suffix = FALSE
+dat5 <- dyad2pair(ddat5,"w","h","dID",distV="Gender",suffix=FALSE)  # OK
+dat5
+ddat5
+
+dat5 <- dyad2pair(ddat5,"h","w",distV="Gender",suffix=FALSE)  # OK
+dat5
+ddat5
+
+dat6 <- dyad2pair(ddat6,"female","male",distV="Gender",suffix=FALSE)  # OK
+dat6
+ddat6
+
+dat7 <- dyad2pair(ddat6,"f","m",distV="Gender",suffix=FALSE)  # OK
+dat7
+ddat6
+
+dat8 <- dyad2pair(ddatp000,"f","m",distV="Gender",suffix=FALSE)  # OK
+dat8
+ddatp000
+
+
+# no paired variables in the data set
+dat000 <- dyad2pair(ddat000,"male","female","dID",distV="Gender",suffix=TRUE) # OK
+dat000
+ddat000
+
+ dat000 <- dyad2pair(ddat000,"female","male",distV="Gender",suffix=TRUE) # OK
+dat000
+ddat000
+
+dat000 <- dyad2pair(ddat000,"female","male",distV="Gender",suffix=TRUE) # OK
+dat000
+ddat000
+
+dat02W <- dyad2pair(ddat02W,"female","male",distV="Gender",suffix=TRUE) # OK
+dat02W
+ddat02W
+
+dat2W <- dyad2pair(ddat2W,"male","female",distV="Gender",suffix=TRUE) # OK
+dat2W
+ddat2W
+
+datZ <- dyad2pair(ddatZ,"female","male",distV="Gender",suffix=TRUE) # OK
+datZ
+ddatZ
+
+
+
+
+### Example data
+dID <- rep(1:3)
+a1  <- 10:12
+a2  <- 0:2
+a3  <- 3:1
+x1 <- 10:12
+x2 <- 0:2
+x3 <- 3:1
+Wmale    <- c(NA,1,2)
+Xfemale  <- c(0,0,0)
+ddat000  <- data.frame(cbind(dID,x1,x2,x3,Wmale,Xfemale))
+ddat000
+
+dID <- rep(1:3)
+a1  <- 10:12
+a2  <- 0:2
+a3  <- 3:1
+x1 <- 10:12
+x2 <- 0:2
+x3 <- 3:1
+mW    <- c(NA,1,2)
+fX  <- c(0,0,0)
+ddatp000  <- data.frame(cbind(dID,x1,x2,x3,mW,fX))
+ddatp000
+
+
+
+datstring <- ("
+Dyad_ID,self1_W,self2_W,self3_W,self4_W,self1_H,self2_H,self3_H,self4_H,VAR00001,VAR00002
+10,4,5,4,5,3,4,4,5,2,1
+11,5,5,5,5,4,3,5,5,3,4
+17,4,4,4,4,3,3,4,5,4,3
+21,3,5,5,4,4,4,5,5,5,2
+3,5,5,5,5,NA,4,3,4,1,2
+33,3,5,5,4,3,5,5,4,5,2
+")
+ddat00 <- read.table(textConnection(datstring),header = TRUE,sep=",",row.names = NULL)
+ddat00
+
+
+dID <- rep(1:3)
+a1  <- 10:12
+a2  <- 0:2
+a3  <- 3:1
+x1 <- 10:12
+x2 <- 0:2
+x3 <- 3:1
+Wmale    <- c(NA,1,2)
+Wfemale  <- c(0,0,0)
+ddat0  <- data.frame(cbind(dID,x1,x2,x3,Wmale,Wfemale))
+ddat0
+
+dID    <- rep(1:3)
+a1 <- 10:12
+a2 <- 0:2
+a3 <- 3:1
+x1 <- 10:12
+x2 <- 0:2
+x3 <- 3:1
+W0    <- c(NA,1,2)
+X0    <- c(1,1,1)
+Y0    <- c(4,5,6)
+Z0    <- c(7,8,9)
+W1  <- c(3,4,5)
+X1  <- c(0,0,0)
+Y1  <- c(7,8,NA)
+Z1  <- c(6,NA,9)
+ddat  <- data.frame(cbind(dID,a1,a2,a3,W0,X0,x1,x2,x3,Y0,Z0,W1,X1,Y1,Z1))
+ddat
+
+dID    <- rep(1:3)
+a1 <- 10:12
+a2 <- 0:2
+a3 <- 3:1
+x1 <- 10:12
+x2 <- 0:2
+x3 <- 3:1
+Wmale    <- c(NA,1,2)
+Xmale    <- c(1,1,1)
+Ymale    <- c(4,5,6)
+Zmale    <- c(7,8,9)
+Wfemale  <- c(3,4,5)
+Xfemale  <- c(0,0,0)
+Yfemale  <- c(7,8,NA)
+Zfemale  <- c(6,NA,9)
+ddat1  <- data.frame(cbind(dID,a1,a2,a3,Wmale,Xmale,x1,x2,x3,Ymale,Zmale,Wfemale,Xfemale,Yfemale,Zfemale))
+ddat1
+ddat2  <- data.frame(cbind(Wfemale,x3,Xfemale,x1,Yfemale,Zfemale,x2,Wmale,Xmale,Ymale,Zmale,dID))
+ddat2
+
+dID    <- rep(1:8)
+Wm    <- c(5,2,6,4,3,NA,1,8)
+Xm    <- c(9,8,3,6,6,7,2,4)
+Ym    <- c(4,2,2,4,6,7,5,9)
+Zm    <- c(3,3,7,7,5,5,9,9)
+Wf    <- c(3,1,4,7,2,3,4,6)
+Xf    <- c(4,8,3,6,6,7,2,4)
+Yf    <- c(4,8,4,1,NA,9,0,2)
+Zf    <- c(6,NA,9,0,3,1,3,2)
+ddat3  <- data.frame(cbind(Wm,Xm,Ym,Zm,Wf,Xf,Yf,Zf,dID))
+ddat3
+
+dID    <- rep(1:8)
+W.m    <- c(5,2,6,4,3,NA,1,8)
+X.m    <- c(9,8,3,6,6,7,2,4)
+Y.m    <- c(4,2,2,4,6,7,5,9)
+Z.m    <- c(3,3,7,7,5,5,9,9)
+W.f    <- c(3,1,4,7,2,3,4,6)
+X.f    <- c(4,8,3,6,6,7,2,4)
+Y.f    <- c(4,8,4,1,NA,9,0,2)
+Z.f    <- c(6,NA,9,0,3,1,3,2)
+ddat4  <- data.frame(cbind(W.m,X.m,Y.m,Z.m,W.f,X.f,Y.f,Z.f,dID))
+ddat4
+
+dID    <- rep(1:8)
+hW     <- c(5,2,6,4,3,NA,1,8)
+hX     <- c(9,8,3,6,6,7,2,4)
+hY     <- c(4,2,2,4,6,7,5,9)
+hZ     <- c(3,3,7,7,5,5,9,9)
+wW     <- c(3,1,4,7,2,3,4,6)
+wX     <- c(4,8,3,6,6,7,2,4)
+wY     <- c(4,8,4,1,NA,9,0,2)
+wZ     <- c(6,NA,9,0,3,1,3,2)
+ddat5  <- data.frame(cbind(hW,hX,hY,hZ,wW,wX,wY,wZ,dID))
+ddat5
+
+dID    <- rep(1:8)
+maleX1     <- c(5,2,6,4,3,NA,1,8)
+maleX2     <- c(9,8,3,6,6,7,2,4)
+maleX3     <- c(4,2,2,4,6,7,5,9)
+maleX4     <- c(3,3,7,7,5,5,9,9)
+femaleX1     <- c(3,1,4,7,2,3,4,6)
+femaleX2     <- c(4,8,3,6,6,7,2,4)
+femaleX3     <- c(4,8,4,1,NA,9,0,2)
+femaleX4     <- c(6,NA,9,0,3,1,3,2)
+ddat6  <- data.frame(cbind(maleX1,femaleX1,maleX2,femaleX2,maleX3,femaleX3,maleX4,femaleX4,dID))
+ddat6
+

@@ -1,0 +1,119 @@
+#######################################################
+#####      Date created    July 19, 2011          #####
+#####      Date modified   March 5, 2014          #####
+#######################################################
+
+
+####    F R O M    I N D I V I D U A L    O R G A N I Z E D    D A T A
+####    T O    D Y A D    O R G A N I Z E D    D A T A
+
+## This function creates a dyad structured dataset. It identifies between-dyads variables 
+## and places them between the group (distinguishing) variable and the mixed variables.
+## The group variable can be either numeric or string. The pairwise data are sorted by
+## the dyad identification variable (dyad ID) and the group variable. 
+
+## Arguments
+# idat = individual structured data set
+# did = name of the dyad identification variable 
+# groupvar = name of the group variable
+# suffix = if true actor and partner information is added as a suffix. Default is TRUE
+# nameA = name added to the variables' name for actors. Default is "A".
+# nameP = name added to the variables' name for partners. Default is "P".
+# vsep = separation between the variable name and the actor and partner information. Default is "_".
+# suf1 = optional suffix to be added to each mixed variable instead of the values of the group variable.
+# suf2 = optional suffix to be added to each mixed variable instead of the values of the group variable.
+# excbetw = if TRUE between-dyads variables will be included in the dyad dataset once. If FALSE between-dyads variables will be added for each member (e.g. relationship.duration_H, relationship.duration_W).
+
+ind2dyad <- function(idat, did, groupvar, suffix = TRUE, vsep = "_", suf1 = "", suf2 = "", excbetw = TRUE) {
+	sortdat <- NULL; pdid <- NULL; pgrvar <- NULL; bvarvec <- NULL
+	nd <- nrow(idat)/2					# number of dyads
+	pdid <- which(names(idat) == did)			# position of the dyad ID
+	pgrvar <- which(names(idat) == groupvar)		# position of the group variable
+
+	dID <- idat[did]
+
+	grvar <- idat[groupvar]
+	names(grvar) <- "grvar"
+  	grvar <- as.factor(grvar[[1]])
+	gr1 <- levels(grvar)[1]
+	gr2 <- levels(grvar)[2]	
+	
+	sortdat <- idat[order(idat[did],idat[groupvar]),]
+
+	datMemA <- as.data.frame(subset(sortdat, idat[groupvar] == gr1, select = -c(pgrvar, pdid)), row.names = 1:nd)
+	datMemB <- as.data.frame(subset(sortdat, idat[groupvar] == gr2, select = -c(pgrvar, pdid)), row.names = 1:nd)
+	dID <- subset(sortdat, idat[groupvar] == gr1, select = did)
+
+	if (suf1 == "") suf1 <- gr1
+	if (suf2 == "") suf2 <- gr2
+
+	if (excbetw) {
+		if (identical(datMemA,datMemB)){
+			datd <- cbind(dID,datMemA)
+		} else {
+			datbet <- subset(sortdat, select = -c(pgrvar, pdid))
+			nvar <- ncol(datMemA)
+			for (i in 1:nvar) {
+				if (identical(datMemA[i],datMemB[i])) bvarvec <- c(bvarvec,i)
+			}
+			if (!is.null(bvarvec)) {
+				datMemA <- subset(datMemA, select = -c(bvarvec))
+				datMemB <- subset(datMemB, select = -c(bvarvec))
+			}
+
+			if (suffix) {
+				names(datMemA) <- paste(names(datMemA), suf1, sep=vsep)
+				names(datMemB) <- paste(names(datMemB), suf2, sep=vsep)
+			} else {
+				names(datMemA) <- paste(suf1, sep=vsep, names(datMemA))
+				names(datMemB) <- paste(suf2, sep=vsep, names(datMemB))
+			}
+			datbet <- subset(datbet, idat[groupvar] == gr1, select = bvarvec)
+			datd <- cbind(dID,datbet,datMemA,datMemB)
+		}
+	} else {
+		if (suffix) {
+			names(datMemA) <- paste(names(datMemA), suf1, sep=vsep)
+			names(datMemB) <- paste(names(datMemB), suf2, sep=vsep)
+		} else {
+			names(datMemA) <- paste(suf1, sep=vsep, names(datMemA))
+			names(datMemB) <- paste(suf2, sep=vsep, names(datMemB))
+		}
+		datd <- cbind(dID,datMemA,datMemB)
+	}
+	return(datd)
+}
+
+pdatSuff <- ind2dyad(idat,"dID","Gender")
+pdatSuff
+idat
+
+pdatSuff <- ind2dyad(idat,"dID","Gender",excbetw = FALSE)
+pdatSuff
+
+pdatPref <- ind2dyad(idat,"dID","Gender", suffix = FALSE, suf1 = "H", suf2 = "W")
+pdatPref
+
+pdatPref <- ind2dyad(idat,"dID","Gender", suffix = FALSE, suf1 = "H", suf2 = "W", excbetw = FALSE)
+pdatPref
+
+pdat <- ind2dyad(idatm,"dID","Gender")
+pdat
+idatm
+
+pdat <- ind2dyad(idatm,"dID","Gender",excbetw = FALSE)
+pdat
+
+pdat <- ind2dyad(idatm2,"dID","G01")
+pdat
+idatm2
+
+pdat <- ind2dyad(idatm2,"dID","G01",excbetw = FALSE)
+pdat
+
+pdata <- ind2dyad(idatb,"dID","G01", suffix = FALSE)
+pdata
+idatb
+
+pdata <- ind2dyad(idatb,"dID","G01", suffix = FALSE, excbetw = FALSE)
+pdata
